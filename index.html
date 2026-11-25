@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Fabric Costing</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script><style id="css">
+/* VOICE: a mill costing desk — exact, calm, quick to use on a phone.
+   IDEA: the costing sheet clipped to a loom card; header woven like cloth.
+   PICTURE: the live cost-per-metre ticket with its breakdown bars beside the inputs.
+   COLOUR and TYPE: indigo dye field, white cloth, rani-pink accent; Archivo + Inter.
+   LAYOUT: indigo band with tabs, then inputs left / result ticket right, stacking on phones. */
+:root{color-scheme:light dark;--bg:light-dark(#fbfbfd,#0f1222);--card:light-dark(#fff,#171b31);--ink:light-dark(#141826,#e9ebf5);--mut:light-dark(#5b6180,#9ba1c0);--line:light-dark(#e3e5ef,#2a2f4c);--ind:#27358c;--ind2:light-dark(#e8ebf8,#222a55);--acc:#d93a72;--up:light-dark(#c0283d,#ff7088);--dn:light-dark(#1d7a4c,#5fd39a)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,sans-serif;overflow-x:clip}
+h1,h2,h3,.big{font-family:Archivo,Inter,sans-serif}
+.top{background:var(--ind);color:#fff;padding:22px max(5vw,16px) 0;background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.05) 0 2px,transparent 2px 7px),repeating-linear-gradient(0deg,rgba(0,0,0,.08) 0 2px,transparent 2px 7px)}
+.top .w,.main{max-width:1240px;margin:0 auto}
+h1{font-size:clamp(28px,5vw,40px);line-height:1.05;margin:0 0 4px;font-weight:700}
+.top p{margin:0;color:#cfd5f5;font-size:15px}
+nav{display:flex;gap:4px;margin-top:18px;overflow-x:auto}
+nav a{flex:none;color:#dfe3fb;text-decoration:none;padding:12px 16px;border-radius:10px 10px 0 0;font-weight:600;font-size:15px}
+nav a.on{background:var(--bg);color:var(--ink)}
+nav a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.main{padding:24px max(5vw,16px) 60px}
+.calc{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:24px;align-items:start}
+fieldset{border:1px solid var(--line);background:var(--card);border-radius:14px;margin:0 0 16px;padding:14px 16px 6px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 14px}
+legend{font:700 17px Archivo,sans-serif;padding:0 6px}
+.f{display:block;margin-bottom:12px}.f.wide{grid-column:1/-1}
+.f>span:first-child{display:block;font-size:13px;color:var(--mut);margin-bottom:4px;font-weight:500}
+.in{display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.in:focus-within{border-color:var(--ind)}
+.in input{border:0;background:transparent;outline:0}
+.in em{font-style:normal;font-size:13px;color:var(--mut);padding-right:10px;white-space:nowrap}
+input,select{font:16px Inter,sans-serif;color:var(--ink);width:100%;min-height:44px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+button{font:600 15px Inter,sans-serif;min-height:44px;padding:8px 16px;border-radius:10px;border:1px solid var(--ind);background:var(--ind);color:#fff;cursor:pointer;white-space:nowrap}
+button.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+button.warn{background:transparent;color:var(--up);border-color:var(--line)}
+button[data-arm]{background:var(--up);color:#fff;border-color:var(--up)}
+.res{position:sticky;top:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;border-top:6px solid var(--acc)}
+.lbl{margin:0;color:var(--mut);font-size:14px;font-weight:500}
+.big{font-size:clamp(40px,7vw,56px);line-height:1.05;margin:2px 0 6px;font-weight:700;white-space:nowrap}
+.sub{margin:0 0 16px;color:var(--mut);font-size:14px}
+.row{display:grid;grid-template-columns:7.5em minmax(0,1fr) 5.5em;gap:10px;align-items:center;font-size:14px;padding:5px 0}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 16px}.stats div{background:var(--ind2);border-radius:10px;padding:10px 12px}.stats b{display:block;font:700 22px Archivo,sans-serif;white-space:nowrap}.stats span{font-size:13px;color:var(--mut)}
+.hint{grid-column:1/-1;margin:-4px 0 12px;font-size:13px;color:var(--mut)}.warnline{color:var(--up);margin:-6px 0 12px}
+.tog{grid-column:1/-1;display:flex;align-items:center;gap:10px;min-height:44px;margin-bottom:10px;font-weight:600;cursor:pointer}.tog input{width:22px;min-height:22px;height:22px;accent-color:var(--ind)}
+.qf{display:grid;grid-template-columns:1.4fr 1.6fr 1fr 1fr;gap:10px;align-items:end}.qf label span{display:block;font-size:13px;color:var(--mut);margin-bottom:4px}.qf .wide{grid-column:1/-2}
+.qtools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 12px}.qtools input{flex:1 1 220px;max-width:360px}.chips{display:flex;gap:6px;flex-wrap:wrap}.chips button{min-height:36px;padding:4px 12px;font-size:13px}
+.who{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:#cfd5f5;margin-top:8px}.who button{min-height:34px;padding:4px 12px;font-size:13px;background:transparent;border-color:rgba(255,255,255,.4);color:#fff}
+.login{max-width:440px}.login .full{width:100%}.or{text-align:center;color:var(--mut);font-size:13px;margin:14px 0}.err{color:var(--up)}
+.row b{font-weight:600;text-align:right;white-space:nowrap}
+.bar{height:10px;background:var(--ind2);border-radius:5px;overflow:hidden}.bar i{display:block;height:100%;background:var(--ind);border-radius:5px}
+.row.p .bar i{background:var(--acc)}
+.row small{grid-column:1/-1;margin-top:-6px;color:var(--mut);font-size:13px}
+.savebox{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;padding-top:16px;border-top:1px dashed var(--line)}
+.savebox input{flex:1 1 180px}
+.fine{font-size:13px;color:var(--mut);margin:14px 0 0}
+.note{background:var(--ind2);border-radius:12px;padding:12px 14px;font-size:14px;margin:0 0 18px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.status{font-size:13px;color:#cfd5f5;margin-top:6px;min-height:1.2em}
+.addy{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:20px}
+.addy h2,.main h2{font-size:22px;margin:0 0 12px}
+.grid5{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1.2fr auto;gap:10px;align-items:end}
+.grid5 label span{display:block;font-size:13px;color:var(--mut);margin-bottom:4px}
+.ylist{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:16px}
+.yc{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.yh{display:flex;justify-content:space-between;gap:12px}
+.yh h3{margin:0;font-size:19px;line-height:1.2}
+.mut{color:var(--mut);font-size:14px;margin:2px 0 0}
+.yp{text-align:right}.yp b{font:700 24px Archivo,sans-serif;white-space:nowrap}.yp span{font-size:13px;color:var(--mut)}
+.chg{display:block;font-size:13px;font-weight:600;white-space:nowrap}.chg.up{color:var(--up)}.chg.dn{color:var(--dn)}
+.spark{position:relative;height:80px;margin:12px 0 4px}.spark svg{position:absolute;inset:0;width:100%;height:100%}
+.rng{display:flex;justify-content:space-between;font-size:13px;color:var(--mut)}
+details{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
+summary{cursor:pointer;font-weight:600;font-size:15px;min-height:36px;display:flex;align-items:center}
+.ap{display:grid;grid-template-columns:1.2fr 1fr auto;gap:8px;margin:10px 0}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-weight:600;color:var(--mut);font-size:13px;padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:8px;border-bottom:1px solid var(--line);vertical-align:middle}
+td.n,th.n{text-align:right;white-space:nowrap}
+td button{min-height:36px;padding:4px 10px;font-size:13px}
+.acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.qt{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px 8px}
+.empty{text-align:center;padding:40px 16px;color:var(--mut)}
+.up{color:var(--up)}.dn{color:var(--dn)}
+pre,.scroll{overflow-x:auto}
+.qf .full{grid-column:1/-1}@media(max-width:860px){.qf{grid-template-columns:1fr 1fr}.qf .wide{grid-column:1/-1}.calc{grid-template-columns:minmax(0,1fr)}.res{position:static;order:-1}.grid5{grid-template-columns:1fr 1fr}.grid5 .nm{grid-column:1/-1}}
+@media(max-width:600px){nav{gap:0}nav a{padding:12px 11px;font-size:14px}.qf{grid-template-columns:minmax(0,1fr)}.qf .wide{grid-column:auto}fieldset{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.row{grid-template-columns:6.5em minmax(0,1fr) 5em}table{font-size:13px}.stack thead{display:none}.stack tr{display:grid;padding-block:10px;border-bottom:1px solid var(--line)}.stack td{display:flow-root;border:0;padding:3px 0;padding-inline-start:8em;text-align:start}.stack td::before{content:attr(data-l);float:inline-start;width:7.5em;margin-inline-start:-8em;white-space:normal;color:var(--mut)}.stack td:empty{display:none}.stack .acts{justify-content:flex-start}}
+@media(prefers-reduced-motion:no-preference){.bar i{transition:width .35s ease}}
+</style></head><body><div id="root"></div><script type="application/json" id="data">{"v":1,"sample":true,"quotes":[{"id":"t1","client":"Shree Ganesh Textiles","qid":"q1","qname":"Cotton poplin 40×40, 132×72","d":"2026-07-20","price":86,"cost":null,"note":"5,000 m, 30 days credit"},{"id":"t2","client":"Navkar Fabrics","qid":"q2","qname":"Poly-viscose shirting","d":"2026-08-22","price":64.5,"cost":null,"note":""},{"id":"t3","client":"Shree Ganesh Textiles","qid":"q3","qname":"Cotton cambric 30×30","d":"2026-10-01","price":80,"cost":null,"note":"Sample approved"}],"yarns":[{"id":"y1","name":"Cotton combed","sys":"Ne","count":40,"hist":[{"d":"2026-06-02","p":282},{"d":"2026-07-15","p":288},{"d":"2026-08-20","p":295},{"d":"2026-09-28","p":301},{"d":"2026-11-03","p":312}]},{"id":"y2","name":"Cotton carded","sys":"Ne","count":30,"hist":[{"d":"2026-06-02","p":238},{"d":"2026-07-15","p":242},{"d":"2026-08-20","p":251},{"d":"2026-09-28","p":249},{"d":"2026-11-03","p":256}]},{"id":"y3","name":"Polyester FDY","sys":"D","count":75,"hist":[{"d":"2026-06-02","p":128},{"d":"2026-08-20","p":124},{"d":"2026-11-03","p":131}]},{"id":"y4","name":"Viscose spun","sys":"Ne","count":30,"hist":[{"d":"2026-07-15","p":210},{"d":"2026-10-10","p":222}]}],"quals":[{"id":"q1","name":"Cotton poplin 40×40, 132×72","in":{"wy":"y1","epi":132,"rs":63,"wc":8,"fy":"y1","ppi":72,"fc":6,"fw":58,"wr":12,"sz":6,"pr":0,"ot":2,"ws":3,"pf":10},"saved":{"d":"2026-07-15","cost":null}},{"id":"q2","name":"Poly-viscose shirting","in":{"wy":"y3","epi":150,"rs":62,"wc":5,"fy":"y4","ppi":80,"fc":5,"fw":58,"wr":14,"sz":4,"pr":6,"ot":2,"ws":3,"pf":12},"saved":{"d":"2026-08-20","cost":null}},{"id":"q3","name":"Cotton cambric 30×30","in":{"wy":"y2","epi":96,"rs":64,"wc":7,"fy":"y2","ppi":68,"fc":5,"fw":60,"wr":11,"sz":6,"pr":0,"ot":2,"ws":3,"pf":10},"saved":{"d":"2026-09-28","cost":null}}]}</script><script id="app">
+{
+// ===== Paste your Firebase web config here =====
+const FIREBASE_CONFIG={apiKey:"AIzaSyD-_vThIwy19F-ugPN3tv1JqOh3DFC9Ln8",authDomain:"fabric-costing-e37f4.firebaseapp.com",projectId:"fabric-costing-e37f4",storageBucket:"fabric-costing-e37f4.firebasestorage.app",messagingSenderId:"517048268277",appId:"1:517048268277:web:c4a7c547c17985d78c9cbc"};
+// ================================================
+const $=s=>document.querySelector(s), root=$('#root');
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ls={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+let SAMPLE;try{SAMPLE=JSON.parse($('#data').textContent)}catch(e){SAMPLE={v:1,yarns:[],quals:[],quotes:[]}}
+const clone=o=>JSON.parse(JSON.stringify(o));let S=clone(SAMPLE);
+const CONFIGURED=!/PASTE/.test(FIREBASE_CONFIG.apiKey)&&typeof firebase!=='undefined';
+let auth=null,ref=null,user=null,ready=!CONFIGURED,lastJson='',loginMsg='',status='',editId=ls.get('fc-edit'),open=new Set(ls.get('fc-open')||[]),armed=null;
+const today=()=>new Date().toLocaleDateString('en-CA');
+const uid=p=>p+Math.random().toString(36).slice(2,9);
+const num=v=>{const n=parseFloat(v);return isFinite(n)?n:0};
+const inr=(n,d=2)=>'₹'+(isFinite(n)?n:0).toLocaleString('en-IN',{minimumFractionDigits:d,maximumFractionDigits:d});
+const fd=d=>{const x=new Date(d+'T00:00');return isNaN(x)?d:x.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'2-digit'})};
+const hist=y=>[...y.hist].sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:0);
+const cur=y=>{const h=hist(y);return h.length?h[h.length-1].p:0};
+const at=(y,d)=>{let p=0;for(const h of hist(y)){if(h.d<=d)p=h.p}return p||(hist(y)[0]||{}).p||0};
+const yarn=id=>S.yarns.find(y=>y.id===id);
+const kgpm=y=>!y||!y.count?0:y.sys==='Ne'?1/(1693.3*y.count):y.sys==='D'?y.count/9e6:y.count/1e6;
+const cl=y=>y.sys==='Ne'?y.count+'s Ne':y.sys==='D'?y.count+'D':y.count+' tex';
+const pct=(a,b)=>b?((a-b)/b*100):0;
+const chg=(a,b,suffix='')=>{if(b==null||!b)return '';const p=pct(a,b);if(Math.abs(p)<0.05)return `<span class="chg">No change${suffix}</span>`;return `<span class="chg ${p>0?'up':'dn'}">${p>0?'▲':'▼'} ${Math.abs(p).toFixed(1)}%${suffix}</span>`};
+
+const calc=(f,price=y=>cur(y))=>{
+ const W=yarn(f.wy),F=yarn(f.fy),F2=yarn(f.fy2),alt=!!num(f.aw)&&!!F2,k=1+num(f.ws)/100;
+ const ra=Math.max(num(f.ra),0),rb=Math.max(num(f.rb),0),shA=alt&&(ra+rb)?ra/(ra+rb):1,shB=alt?1-shA:0;
+ const wl=num(f.ppi)*num(f.rs)*(1+num(f.fc)/100);
+ const warpKg=num(f.epi)*num(f.rs)*(1+num(f.wc)/100)*kgpm(W);
+ const weftKg=wl*shA*kgpm(F),weft2Kg=alt?wl*shB*kgpm(F2):0;
+ const warp=warpKg*(W?price(W):0)*k,weft=weftKg*(F?price(F):0)*k,weft2=alt?weft2Kg*price(F2)*k:0;
+ const sizing=warpKg*num(f.sz),weaving=num(f.wr)/100*num(f.ppi),proc=num(f.pr),other=num(f.ot);
+ const sub=warp+weft+weft2+sizing+weaving+proc+other,profit=sub*num(f.pf)/100,gpm=(warpKg+weftKg+weft2Kg)*1000,wm=num(f.fw)*0.0254,gsm=wm?gpm/wm:0;
+ return {warpKg,weftKg,weft2Kg,warp,weft,weft2,alt,shA,shB,sizing,weaving,proc,other,sub,profit,total:sub+profit,gpm,gsm,oz:gsm/33.9,ok:!!(W&&F)};
+};
+const norm=()=>{S.yarns=S.yarns||[];S.quals=S.quals||[];S.quotes=S.quotes||[];
+for(const q of S.quals)if(q.saved&&q.saved.cost==null)q.saved.cost=calc(q.in,y=>at(y,q.saved.d)).total;
+for(const t of S.quotes){const q=S.quals.find(x=>x.id===t.qid);if(t.cost==null)t.cost=q?calc(q.in,y=>at(y,t.d)).total:0;if(t.price==null)t.price=Math.round(t.cost*1.08)}};norm();
+
+const DEF={wy:'',epi:'',rs:'',wc:8,fy:'',ppi:'',fc:6,aw:0,fy2:'',ra:1,rb:1,fw:'',wr:12,sz:6,pr:0,ot:0,ws:3,pf:10};
+let qFilter='',quoteFor=null;
+let F=Object.assign({},DEF,(S.quals[0]||{}).in||{},ls.get('fc-draft')||{});
+const fix=()=>{if(!yarn(F.wy))F.wy=(S.yarns[0]||{}).id||'';if(!yarn(F.fy))F.fy=(S.yarns[0]||{}).id||'';if(!yarn(F.fy2))F.fy2=(S.yarns[1]||S.yarns[0]||{}).id||'';if(editId&&!S.quals.find(q=>q.id===editId))editId=null};
+
+let tmr=null;
+const setStatus=t=>{status=t;const e=$('#st');if(e)e.textContent=t};
+const save=()=>{ls.set('fc-draft',F);ls.set('fc-edit',editId);clearTimeout(tmr);tmr=setTimeout(async()=>{const j=JSON.stringify(S);
+ if(!ref){ls.set('fc-data',S);setStatus('Firebase not set up yet: saved on this device only');return}
+ lastJson=j;setStatus('Saving…');try{await ref.set({json:j,updated:firebase.firestore.FieldValue.serverTimestamp()});setStatus('All changes saved')}catch(e){setStatus('Could not save: '+(e.code||e.message))}},500)};
+const amsg=e=>({'auth/invalid-credential':'Wrong email or password.','auth/wrong-password':'Wrong email or password.','auth/user-not-found':'No account with this email. Tap Create account.','auth/email-already-in-use':'This email already has an account. Tap Sign in.','auth/weak-password':'Use a password of at least 6 characters.','auth/invalid-email':'That email address doesn\'t look right.','auth/unauthorized-domain':'This website isn\'t allowed yet. In Firebase → Authentication → Settings → Authorized domains, add '+location.hostname+'.','auth/operation-not-allowed':'This sign-in method is off. Turn it on in Firebase → Authentication → Sign-in method.','auth/popup-closed-by-user':'Sign-in window was closed.'})[e&&e.code]||(e&&e.message)||'Something went wrong.';
+const loginV=()=>`<header class="top"><div class="w"><h1>Fabric costing</h1><p>Sign in to open your yarn prices, qualities and quotes.</p><nav></nav></div></header>
+ <main class="main"><section class="addy login"><h2>Sign in</h2><button class="full" data-act="google">Continue with Google</button><p class="or">or use email and password</p>
+ <form id="lf"><label class="f"><span>Email</span><input name="em" type="email" autocomplete="email" required></label><label class="f"><span>Password</span><input name="pw" type="password" autocomplete="current-password" minlength="6" required></label>
+ <div class="acts" style="justify-content:flex-start"><button type="submit" value="in">Sign in</button><button type="submit" class="ghost" value="up">Create account</button><button type="button" class="ghost" data-act="reset">Forgot password</button></div></form>
+ <p class="fine ${/sent/.test(loginMsg)?'':'err'}" id="lmsg">${esc(loginMsg)}</p></section></main>`;
+
+const view=()=>({'#yarns':'yarns','#qualities':'quals','#quotes':'quotes'})[location.hash]||'cost';
+const render=()=>{if(CONFIGURED&&!user){root.innerHTML=loginV();return}if(!ready){root.innerHTML=`<header class="top"><div class="w"><h1>Fabric costing</h1><p>Loading your data…</p><nav></nav></div></header>`;return}fix();const v=view();
+ root.innerHTML=`<header class="top"><div class="w"><h1>Fabric costing</h1><p>${S.yarns.length} yarns · ${S.quals.length} qualities · ${S.quotes.length} quotes</p><div class="status" id="st">${esc(status)}</div>${user?`<div class="who"><span>${esc(user.email||user.displayName||'Signed in')}</span><button data-act="signout">Sign out</button></div>`:''}
+ <nav>${[['#costing','Costing','cost'],['#yarns','Yarn prices','yarns'],['#qualities','Qualities','quals'],['#quotes','Quotes','quotes']].map(([h,t,k])=>`<a href="${h}" class="${v===k?'on':''}">${t}</a>`).join('')}</nav></div></header>
+ <main class="main">${S.sample?`<p class="note"><span>These are sample yarns, qualities and quotes so you can see how it works. Edit them, or clear them and start with your own.</span><button class="ghost" data-act="clear">Clear samples</button></p>`:''}${v==='yarns'?yarnsV():v==='quals'?qualsV():v==='quotes'?quotesV():costV()}</main>`;
+ if(v==='cost')res();if(v==='yarns')sparks();};
+
+const opt=sel=>S.yarns.map(y=>`<option value="${esc(y.id)}"${y.id===sel?' selected':''}>${esc(y.name)} · ${esc(cl(y))} · ${inr(cur(y),0)}/kg</option>`).join('');
+const fld=(k,l,u)=>`<label class="f"><span>${l}</span><span class="in"><input id="i-${k}" data-k="${k}" type="number" inputmode="decimal" step="any" min="0" value="${esc(F[k])}"><em>${u}</em></span></label>`;
+const costV=()=>!S.yarns.length?`<div class="empty"><h2>Add a yarn first</h2><p>Your yarn prices feed every costing.</p><button data-go="#yarns">Go to yarn prices</button></div>`:`<div class="calc"><form class="form" id="cf" onsubmit="return false">
+ <fieldset><legend>Fabric</legend>${fld('fw','Finished width','inch')}<p class="hint">Needed for GSM and oz. Reed width is under Warp.</p></fieldset>
+ <fieldset><legend>Warp</legend><label class="f wide"><span>Warp yarn</span><select data-k="wy">${opt(F.wy)}</select></label>${fld('epi','Ends per inch (EPI)','ends')}${fld('rs','Reed width','inch')}${fld('wc','Crimp / take-up','%')}${fld('sz','Sizing cost','₹/kg')}</fieldset>
+ <fieldset><legend>Weft</legend><label class="f wide"><span>${num(F.aw)?'Weft yarn A':'Weft yarn'}</span><select data-k="fy">${opt(F.fy)}</select></label>${fld('ppi','Picks per inch (PPI)','picks')}${fld('fc','Crimp / shrinkage','%')}
+ <label class="tog wide"><input type="checkbox" data-k="aw"${num(F.aw)?' checked':''}><span>Use an alternate weft yarn</span></label>
+ ${num(F.aw)?`<label class="f wide"><span>Weft yarn B</span><select data-k="fy2">${opt(F.fy2)}</select></label>${fld('ra','Picks of A','in ratio')}${fld('rb','Picks of B','in ratio')}<p class="hint">Total PPI is shared between A and B in this ratio, e.g. 1 : 1 for pick-and-pick, 2 : 1 for two of A then one of B.</p>`:''}</fieldset>
+ <fieldset><legend>Charges</legend>${fld('wr','Weaving rate','paise/pick')}${fld('pr','Processing','₹/m')}${fld('ot','Other overheads','₹/m')}${fld('ws','Yarn wastage','%')}${fld('pf','Profit margin','%')}</fieldset></form><aside class="res" id="res" aria-live="polite"></aside></div>`;
+const res=()=>{const e=$('#res');if(!e)return;const r=calc(F),W=yarn(F.wy),Y=yarn(F.fy),Y2=yarn(F.fy2),q=S.quals.find(x=>x.id===editId);
+ const rows=[['Warp yarn',r.warp,`${(r.warpKg*1000).toFixed(1)} g/m × ${inr(W?cur(W):0,0)}/kg`],[r.alt?'Weft yarn A':'Weft yarn',r.weft,`${(r.weftKg*1000).toFixed(1)} g/m × ${inr(Y?cur(Y):0,0)}/kg${r.alt?` · ${(r.shA*100).toFixed(0)}% of picks`:''}`]];
+ if(r.alt)rows.push(['Weft yarn B',r.weft2,`${(r.weft2Kg*1000).toFixed(1)} g/m × ${inr(cur(Y2),0)}/kg · ${(r.shB*100).toFixed(0)}% of picks`]);
+ rows.push(['Sizing',r.sizing],['Weaving',r.weaving,`${num(F.ppi)} picks × ${num(F.wr)} paise`],['Processing',r.proc],['Overheads',r.other],['Profit',r.profit,'','p']);
+ const show=rows.filter(x=>x[1]>0||x[0].includes('yarn')),mx=Math.max(...show.map(x=>x[1]),0.01);
+ e.innerHTML=`<p class="lbl">Cost per metre${q?' · '+esc(q.name):''}</p><p class="big">${inr(r.total)}</p><p class="sub">${inr(r.sub)} before profit${num(F.pf)?` · ${num(F.pf)}% profit`:''}</p>
+ <div class="stats"><div><b>${r.gpm.toFixed(0)}</b><span>g / metre</span></div><div><b>${r.gsm?r.gsm.toFixed(0):'—'}</b><span>GSM</span></div><div><b>${r.gsm?r.oz.toFixed(2):'—'}</b><span>oz / yd²</span></div></div>
+ ${r.gsm?'':'<p class="fine warnline">Enter the finished width (Fabric section) to get GSM and oz.</p>'}
+ ${show.map(([l,v,s,c])=>`<div class="row ${c||''}"><span>${l}</span><span class="bar"><i style="width:${(v/mx*100).toFixed(1)}%"></i></span><b>${inr(v)}</b>${s?`<small>${s}</small>`:''}</div>`).join('')}
+ ${q?`<p class="fine">Saved at ${inr(q.saved.cost)} on ${fd(q.saved.d)} ${chg(r.total,q.saved.cost,' since then')}</p>`:''}
+ <div class="savebox"><input id="qn" placeholder="Quality name, e.g. Poplin 40×40" value="${esc(q?q.name:'')}" aria-label="Quality name"><button data-act="saveq">${q?'Update quality':'Save quality'}</button>${q?`<button class="ghost" data-act="newq">Save as new</button><button class="ghost" data-act="quoteq" data-id="${esc(q.id)}">Quote to a client</button><button class="ghost" data-act="clearedit">Start blank</button>`:''}</div>
+ ${q?'':'<p class="fine">Save the quality to record client quotes for it.</p>'}
+ <p class="fine">Yarn weight = length ÷ (1693.3 × Ne) for cotton counts, or denier ÷ 9,000,000 per metre for filament. Weft length per metre ≈ PPI × reed width in inches. oz = GSM ÷ 33.9.</p>`};
+
+const sp=y=>{const h=hist(y);if(h.length<2)return `<p class="mut">Add more prices to see the trend.</p>`;const ps=h.map(x=>x.p);
+ return `<div class="spark" data-id="${esc(y.id)}"><svg aria-label="Price trend"></svg></div><div class="rng"><span>${fd(h[0].d)} · ${inr(h[0].p,0)}</span><span>Low ${inr(Math.min(...ps),0)} · High ${inr(Math.max(...ps),0)}</span></div>`};
+const sparks=()=>{for(const d of document.querySelectorAll('.spark')){const y=yarn(d.dataset.id),s=d.firstElementChild;if(!y)continue;
+ const draw=()=>{const W=s.clientWidth,H=s.clientHeight,h=hist(y),ps=h.map(x=>x.p),lo=Math.min(...ps),hi=Math.max(...ps),t=h.map(x=>new Date(x.d).getTime()),t0=t[0],t1=t[t.length-1]||t0+1;
+  const X=i=>6+(W-12)*((t[i]-t0)/((t1-t0)||1)),Yv=p=>H-8-(H-16)*((p-lo)/((hi-lo)||1));const pts=h.map((x,i)=>X(i).toFixed(1)+','+Yv(x.p).toFixed(1));
+  s.innerHTML=`<polygon points="${X(0)},${H} ${pts.join(' ')} ${X(h.length-1)},${H}" fill="var(--ind2)"/><polyline points="${pts.join(' ')}" fill="none" stroke="var(--ind)" stroke-width="2.5" stroke-linejoin="round"/>${h.map((x,i)=>`<circle cx="${X(i)}" cy="${Yv(x.p)}" r="${i===h.length-1?5:3}" fill="${i===h.length-1?'var(--acc)':'var(--ind)'}"/>`).join('')}`};
+ const ro=new ResizeObserver(draw);ro.observe(s)}};
+const used=id=>S.quals.filter(q=>q.in.wy===id||q.in.fy===id||(num(q.in.aw)&&q.in.fy2===id)).length;
+const cons=i=>{const W=yarn(i.wy),Y=yarn(i.fy),Y2=yarn(i.fy2);return `${W?cl(W):'?'} × ${Y?cl(Y):'?'}${num(i.aw)&&Y2?' + '+cl(Y2)+' ('+num(i.ra)+':'+num(i.rb)+')':''} · ${num(i.epi)}×${num(i.ppi)} · ${num(i.rs)}″`};
+const yarnsV=()=>`<section class="addy"><h2>Add a yarn</h2><form id="ay" class="grid5"><label class="nm"><span>Yarn name</span><input name="name" required placeholder="e.g. Cotton combed compact"></label>
+ <label><span>Count system</span><select name="sys"><option value="Ne">Ne (cotton)</option><option value="D">Denier</option><option value="tex">Tex</option></select></label>
+ <label><span>Count</span><input name="count" type="number" step="any" min="0" inputmode="decimal" required placeholder="40"></label>
+ <label><span>Price ₹/kg</span><input name="p" type="number" step="any" min="0" inputmode="decimal" required placeholder="300"></label>
+ <label><span>Price date</span><input name="d" type="date" value="${today()}" required></label><button type="submit">Add yarn</button></form></section>
+ <div class="ylist">${S.yarns.map(y=>{const h=hist(y),c=cur(y),n=used(y.id),pv=h.length>1?h[h.length-2]:null;return `<article class="yc"><div class="yh"><div><h3>${esc(y.name)}</h3><p class="mut">${esc(cl(y))} · used in ${n} ${n===1?'quality':'qualities'}</p></div>
+ <div class="yp"><b>${inr(c,0)}</b><span>/kg</span>${pv?chg(c,pv.p,' since '+fd(pv.d)):''}</div></div>${sp(y)}
+ <details data-id="${esc(y.id)}"${open.has(y.id)?' open':''}><summary>Price history (${h.length})</summary>
+ <form class="ap" data-id="${esc(y.id)}"><input name="d" type="date" value="${today()}" required aria-label="Date"><input name="p" type="number" step="any" min="0" inputmode="decimal" placeholder="₹/kg" required aria-label="Price per kg"><button type="submit">Add price</button></form>
+ <table><thead><tr><th>Date</th><th class="n">₹/kg</th><th class="n">Change</th><th></th></tr></thead><tbody>${h.slice().reverse().map((x,i,a)=>`<tr><td>${fd(x.d)}</td><td class="n">${inr(x.p,0)}</td><td class="n">${a[i+1]?chg(x.p,a[i+1].p):'—'}</td><td class="n">${h.length>1?`<button class="warn" data-act="delp" data-id="${esc(y.id)}" data-d="${esc(x.d)}" data-p="${esc(x.p)}">Remove</button>`:''}</td></tr>`).join('')}</tbody></table>
+ <p style="margin:12px 0 0">${n?`<span class="mut">Used by ${n} saved ${n===1?'quality':'qualities'}, so it can't be deleted.</span>`:`<button class="warn" data-act="dely" data-id="${esc(y.id)}">Delete yarn</button>`}</p></details></article>`}).join('')||'<p class="empty">No yarns yet. Add your first yarn and its price above.</p>'}</div>`;
+
+const qualsV=()=>!S.quals.length?`<div class="empty"><h2>No saved qualities yet</h2><p>Work out a cost, give it a name and save it. Its cost updates whenever yarn prices change.</p><button data-go="#costing">Open costing</button></div>`:`<h2>Saved qualities, priced at today's yarn rates</h2><div class="qt"><table class="stack"><thead><tr><th>Quality</th><th>Construction</th><th class="n">Saved cost</th><th class="n">Cost today</th><th class="n">Change</th><th></th></tr></thead><tbody>${S.quals.map(q=>{const r=calc(q.in),W=yarn(q.in.wy),Y=yarn(q.in.fy);
+ return `<tr><td><b>${esc(q.name)}</b></td><td>${esc(cons(q.in))}</td><td class="n">${inr(q.saved.cost)} <span class="mut">${fd(q.saved.d)}</span></td><td class="n"><b>${inr(r.total)}</b></td><td class="n">${chg(r.total,q.saved.cost)||'—'}</td>
+ <td><div class="acts"><button class="ghost" data-act="openq" data-id="${esc(q.id)}">Open</button><button class="ghost" data-act="quoteq" data-id="${esc(q.id)}">Quote</button><button class="ghost" data-act="rebase" data-id="${esc(q.id)}">Set today as base</button><button class="warn" data-act="delq" data-id="${esc(q.id)}">Delete</button></div></td></tr>`}).join('')}</tbody></table></div>
+ <p class="fine">“Saved cost” is the cost on the day you saved or last re-based the quality. “Cost today” uses the latest price of each yarn.</p>`;
+
+const clients=()=>[...new Set(S.quotes.map(t=>t.client))].sort((a,b)=>a.localeCompare(b));
+const qRows=()=>{const f=qFilter.toLowerCase(),list=S.quotes.filter(t=>!f||t.client.toLowerCase().includes(f)||(t.qname||'').toLowerCase().includes(f)).sort((a,b)=>a.d<b.d?1:a.d>b.d?-1:0);
+ if(!list.length)return `<tr><td colspan="7" class="empty">${S.quotes.length?'No quotes match this search.':'No quotes yet.'}</td></tr>`;
+ return list.map(t=>{const q=S.quals.find(x=>x.id===t.qid),now=q?calc(q.in).total:null,m=now!=null&&t.price?(t.price-now)/t.price*100:null;
+ return `<tr><td>${fd(t.d)}</td><td><b>${esc(t.client)}</b>${t.note?`<br><span class="mut">${esc(t.note)}</span>`:''}</td><td>${esc(q?q.name:t.qname)}${q?'':' <span class="mut">(deleted)</span>'}</td><td class="n"><b>${inr(t.price)}</b>/m</td><td class="n">${inr(t.cost)}</td><td class="n">${now!=null?inr(now):'—'}${m!=null?`<br><span class="${m<0?'up':'mut'}">${(Math.abs(m)<0.05?0:m).toFixed(1)}% margin now</span>`:''}</td><td><div class="acts"><button class="warn" data-act="delt" data-id="${esc(t.id)}">Delete</button></div></td></tr>`}).join('')};
+const quotesV=()=>{const sel=quoteFor||(S.quals[0]||{}).id,q=S.quals.find(x=>x.id===sel),cost=q?calc(q.in).total:0,cs=clients();
+ return `<section class="addy"><h2>Record a quote</h2>${!S.quals.length?'<p class="mut">Save a quality on the Costing tab first, then record what you quoted for it.</p>':`<form id="aq" class="qf">
+ <label><span>Client name</span><input name="client" list="cl" required placeholder="e.g. Shree Textiles" autocomplete="off"><datalist id="cl">${cs.map(c=>`<option value="${esc(c)}">`).join('')}</datalist></label>
+ <label><span>Quality</span><select name="qid" id="aqq">${S.quals.map(x=>`<option value="${esc(x.id)}"${x.id===sel?' selected':''}>${esc(x.name)}</option>`).join('')}</select></label>
+ <label><span>Price quoted ₹/m</span><input name="price" type="number" step="any" min="0" inputmode="decimal" required value="${cost?cost.toFixed(2):''}"></label>
+ <label><span>Date</span><input name="d" type="date" value="${today()}" required></label>
+ <label class="wide"><span>Note (optional)</span><input name="note" placeholder="Quantity, payment terms, delivery…"></label>
+ <button type="submit">Save quote</button></form><p class="fine" id="aqc">Cost today for this quality: ${inr(cost)} per metre. The cost is stored with the quote so you can compare later.</p>`}</section>
+ <h2>Quote history</h2><div class="qtools"><input id="qs" type="search" placeholder="Search client or quality" value="${esc(qFilter)}" aria-label="Search quotes">${cs.length?`<div class="chips">${cs.slice(0,8).map(c=>`<button class="ghost" data-act="fc" data-c="${esc(c)}">${esc(c)}</button>`).join('')}${qFilter?'<button class="ghost" data-act="fc" data-c="">Show all</button>':''}</div>`:''}</div>
+ <div class="qt"><table class="stack"><thead><tr><th>Date</th><th>Client</th><th>Quality</th><th class="n">Quoted</th><th class="n">Cost then</th><th class="n">Cost today</th><th></th></tr></thead><tbody id="qb">${qRows()}</tbody></table></div>
+ <p class="fine">“Margin now” compares your quoted price with today's cost, so you can see which quotes need revising after yarn prices move.</p>`};
+const arm=(b,key,fn)=>{if(armed===key){armed=null;fn();return}armed=key;b.dataset.arm='1';b.textContent='Tap again';setTimeout(()=>{if(armed===key){armed=null;delete b.dataset.arm;render()}},3000)};
+root.addEventListener('input',e=>{const t=e.target;if(t.id==='qs'){qFilter=t.value;$('#qb').innerHTML=qRows();return}const k=t.dataset.k;if(!k||t.type==='checkbox')return;F[k]=t.value;ls.set('fc-draft',F);res()});
+root.addEventListener('change',e=>{const t=e.target;if(t.id==='aqq'){const q=S.quals.find(x=>x.id===t.value),c=q?calc(q.in).total:0;quoteFor=t.value;t.form.elements.price.value=c.toFixed(2);$('#aqc').textContent='Cost today for this quality: '+inr(c)+' per metre. The cost is stored with the quote so you can compare later.';return}
+ const k=t.dataset.k;if(!k)return;if(t.type==='checkbox'){F[k]=t.checked?1:0;ls.set('fc-draft',F);render();return}F[k]=t.value;ls.set('fc-draft',F);res()});
+root.addEventListener('toggle',e=>{const d=e.target;if(d.tagName!=='DETAILS')return;d.open?open.add(d.dataset.id):open.delete(d.dataset.id);ls.set('fc-open',[...open])},true);
+root.addEventListener('submit',e=>{e.preventDefault();const f=e.target,g=n=>f.elements[n].value.trim();
+ if(f.id==='lf'){const up=e.submitter&&e.submitter.value==='up',em=g('em'),pw=f.elements.pw.value;loginMsg='';(up?auth.createUserWithEmailAndPassword(em,pw):auth.signInWithEmailAndPassword(em,pw)).catch(x=>{loginMsg=amsg(x);render()});return}
+ if(f.id==='ay'){const c=num(g('count')),p=num(g('p'));if(!g('name')||!c||!p)return;const id=uid('y');S.yarns.push({id,name:g('name'),sys:g('sys'),count:c,hist:[{d:g('d')||today(),p}]});open.add(id);save();render()}
+ else if(f.id==='aq'){const qid=g('qid'),q=S.quals.find(x=>x.id===qid),price=num(g('price'));if(!g('client')||!q||!price)return;const d=g('d')||today();
+  S.quotes.push({id:uid('t'),client:g('client'),qid,qname:q.name,price,d,cost:calc(q.in).total,note:g('note')});quoteFor=qid;save();render();setStatus('Quote saved')}
+ else if(f.classList.contains('ap')){const y=yarn(f.dataset.id),p=num(g('p')),d=g('d')||today();if(!y||!p)return;y.hist=y.hist.filter(x=>x.d!==d);y.hist.push({d,p});save();render()}});
+root.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.go){location.hash=b.dataset.go;return}const a=b.dataset.act,id=b.dataset.id;if(!a)return;
+ if(a==='google'){const p=new firebase.auth.GoogleAuthProvider();auth.signInWithPopup(p).catch(x=>{if(/popup-blocked|operation-not-supported/.test(x.code))return auth.signInWithRedirect(p);loginMsg=amsg(x);render()});return}
+ if(a==='reset'){const em=($('#lf input[name=em]').value||'').trim();if(!em){loginMsg='Type your email above first, then tap Forgot password.';render();return}auth.sendPasswordResetEmail(em).then(()=>{loginMsg='Password reset email sent to '+em+'.';render()}).catch(x=>{loginMsg=amsg(x);render()});return}
+ if(a==='signout'){auth.signOut();return}
+ if(a==='saveq'||a==='newq'){const name=($('#qn').value||'').trim()||'Untitled quality',r=calc(F),q=a==='saveq'&&S.quals.find(x=>x.id===editId),inp={};for(const k in DEF)inp[k]=k==='wy'||k==='fy'||k==='fy2'?F[k]:num(F[k]);
+  if(q){q.name=name;q.in=inp;q.saved={d:today(),cost:r.total}}else{editId=uid('q');S.quals.push({id:editId,name,in:inp,saved:{d:today(),cost:r.total}})}save();render();setStatus(q?'Quality updated':'Quality saved')}
+ else if(a==='clearedit'){editId=null;F=Object.assign({},DEF);ls.set('fc-edit',null);ls.set('fc-draft',F);render()}
+ else if(a==='openq'){const q=S.quals.find(x=>x.id===id);if(!q)return;F=Object.assign({},DEF,q.in);editId=id;ls.set('fc-draft',F);ls.set('fc-edit',id);location.hash='#costing';render()}
+ else if(a==='quoteq'){quoteFor=id;location.hash='#quotes';render()}
+ else if(a==='fc'){qFilter=b.dataset.c;render()}
+ else if(a==='delt')arm(b,a+id,()=>{S.quotes=S.quotes.filter(x=>x.id!==id);save();render()});
+ else if(a==='rebase'){const q=S.quals.find(x=>x.id===id);if(q){q.saved={d:today(),cost:calc(q.in).total};save();render()}}
+ else if(a==='delq')arm(b,a+id,()=>{S.quals=S.quals.filter(x=>x.id!==id);if(editId===id)editId=null;save();render()});
+ else if(a==='dely')arm(b,a+id,()=>{S.yarns=S.yarns.filter(x=>x.id!==id);save();render()});
+ else if(a==='delp'){const y=yarn(id);arm(b,a+id+b.dataset.d,()=>{y.hist=y.hist.filter(x=>!(x.d===b.dataset.d&&String(x.p)===b.dataset.p));save();render()})}
+ else if(a==='clear')arm(b,a,()=>{S={v:1,yarns:[],quals:[],quotes:[]};editId=null;F=Object.assign({},DEF);location.hash='#yarns';save();render()})});
+window.addEventListener('hashchange',render);
+new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(root,{childList:true,subtree:true});
+render();
+if(!CONFIGURED){const l=ls.get('fc-data');if(l&&Array.isArray(l.yarns)){S=l;norm()}setStatus('Firebase not set up yet: saving on this device only');render()}
+else{firebase.initializeApp(FIREBASE_CONFIG);auth=firebase.auth();const fs=firebase.firestore();try{fs.enablePersistence({synchronizeTabs:true}).catch(()=>{})}catch(e){}
+ auth.getRedirectResult().catch(x=>{loginMsg=amsg(x);render()});let unsub=null;
+ auth.onAuthStateChanged(u=>{user=u;if(unsub){unsub();unsub=null}ref=null;lastJson='';
+  if(!u){ready=true;render();return}
+  ready=false;render();ref=fs.collection('fabricCosting').doc(u.uid);
+  unsub=ref.onSnapshot(snap=>{if(snap.metadata.hasPendingWrites)return;
+   if(!snap.exists){if(snap.metadata.fromCache)return;S=clone(SAMPLE);norm();ready=true;render();save();return}
+   const j=snap.data().json;if(ready&&j===lastJson)return;lastJson=j;try{S=JSON.parse(j)}catch(e){}norm();ready=true;status='All changes saved';render()},
+   x=>{status='Could not load your data: '+(x.code||x.message);ready=true;render()})})}
+}
+</script></body></html>
